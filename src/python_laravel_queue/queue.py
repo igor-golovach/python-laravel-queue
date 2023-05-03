@@ -5,12 +5,14 @@ from pyee import BaseEventEmitter
 import uuid
 import time
 
+
 class Queue:
 
-    def __init__(self, client: Redis, 
+    def __init__(self, client: Redis,
                  queue: str,
                  driver: str = 'redis',
-                 appname: str = 'laravel', prefix: str = '_database_', is_queue_notify: bool = True, is_horizon: bool = False) -> None:
+                 appname: str = 'laravel', prefix: str = '_database_', is_queue_notify: bool = True,
+                 is_horizon: bool = False) -> None:
         self.driver = driver
         self.client = client
         self.queue = queue
@@ -31,6 +33,7 @@ class Queue:
     def handler(self, f=None):
         def wrapper(f):
             self.ee._add_event_handler('queued', f, f)
+
         if f is None:
             return wrapper
         else:
@@ -46,9 +49,9 @@ class Queue:
         self.ee.emit(
             'queued', {'name': obj['data']['commandName'], 'data': raw._asdict()})
 
-        if self.is_horizon: # TODO
-            pass 
-        
+        if self.is_horizon:  # TODO
+            pass
+
         if self.is_queue_notify:
             self.client.blpop(
                 self.appname + self.prefix + 'queues:' + self.queue + ':notify', 60000)
@@ -58,23 +61,23 @@ class Queue:
     def redisPush(self, name: str, dictObj: dict, timeout: int = None, delay: int = None):
         command = phpserialize.dumps(phpserialize.phpobject(name, dictObj))
         data = {
-        "uuid": str(uuid.uuid4()),
-        "job": 'Illuminate\\Queue\\CallQueuedHandler@call',
-        "data": {
-            "commandName": name,
-            "command": command.decode("utf-8"),
-        },
-        "timeout": timeout,
-        "id": str(time.time()),
-        "attempts": 0,
-        "delay": delay,
-        "maxExceptions": None,
+            "uuid": str(uuid.uuid4()),
+            "job": 'Illuminate\\Queue\\CallQueuedHandler@call',
+            "data": {
+                "commandName": name,
+                "command": command.decode("utf-8"),
+            },
+            "timeout": timeout,
+            "id": str(time.time()),
+            "attempts": 0,
+            "delay": delay,
+            "maxExceptions": None,
         }
-        
+
         if self.is_queue_notify == False:
             del data['delay']
             del data['maxExceptions']
             data.update({'displayName': name, 'maxTries': None, 'timeoutAt': None})
-        
+
         self.client.rpush(
             self.appname + self.prefix + 'queues:' + self.queue, json.dumps(data))
